@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JBJ Roadtransport Europe</title>
+
+  <link href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #06111e;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Klein bewegend JBJ-bolletje */
+    .jbj-marker {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+      border: 1.5px solid #00dfff;
+      box-sizing: border-box;
+      box-shadow: 0 0 5px #00dfff, 0 0 11px rgba(0,191,255,0.65);
+    }
+
+    .flag {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .flag-white {
+      flex: 1;
+      background: white;
+    }
+
+    .flag-green {
+      flex: 1;
+      background: #00966e;
+    }
+
+    .flag-red {
+      flex: 1;
+      background: #d62612;
+    }
+
+    .jbj-text {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      background: rgba(0,0,0,0.94);
+      font-weight: bold;
+      font-size: 9px;
+      padding: 2px 3px;
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<script>
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/fiord',
+    center: [10, 51.5],
+    zoom: 3.7,
+    minZoom: 2
+  });
+
+  map.addControl(new maplibregl.NavigationControl());
+
+  const utrecht = [5.1214, 52.0907];
+
+  const cities = [
+    { name: "Amsterdam", coordinates: [4.9041, 52.3676] },
+    { name: "Rotterdam", coordinates: [4.4777, 51.9244] },
+    { name: "Brussels", coordinates: [4.3517, 50.8503] },
+    { name: "Paris", coordinates: [2.3522, 48.8566] },
+    { name: "London", coordinates: [-0.1276, 51.5072] },
+    { name: "Berlin", coordinates: [13.4050, 52.5200] },
+    { name: "Hamburg", coordinates: [9.9937, 53.5511] },
+    { name: "Copenhagen", coordinates: [12.5683, 55.6761] },
+    { name: "Prague", coordinates: [14.4378, 50.0755] },
+    { name: "Vienna", coordinates: [16.3738, 48.2082] },
+    { name: "Zurich", coordinates: [8.5417, 47.3769] },
+    { name: "Milan", coordinates: [9.1900, 45.4642] },
+    { name: "Rome", coordinates: [12.4964, 41.9028] },
+    { name: "Barcelona", coordinates: [2.1734, 41.3851] },
+    { name: "Madrid", coordinates: [-3.7038, 40.4168] },
+    { name: "Lyon", coordinates: [4.8357, 45.7640] },
+    { name: "Munich", coordinates: [11.5820, 48.1351] },
+    { name: "Warsaw", coordinates: [21.0122, 52.2297] },
+    { name: "Budapest", coordinates: [19.0402, 47.4979] },
+    { name: "Sofia", coordinates: [23.3219, 42.6977] },
+    { name: "Belgrade", coordinates: [20.4489, 44.7866] }
+  ];
+
+  map.on('load', () => {
+
+    /* Europese steden */
+    map.addSource('cities', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: cities.map(city => ({
+          type: 'Feature',
+          properties: { name: city.name },
+          geometry: {
+            type: 'Point',
+            coordinates: city.coordinates
+          }
+        }))
+      }
+    });
+
+    map.addLayer({
+      id: 'city-points',
+      type: 'circle',
+      source: 'cities',
+      paint: {
+        'circle-radius': 4,
+        'circle-color': '#00eaff',
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 1
+      }
+    });
+
+    map.addLayer({
+      id: 'city-labels',
+      type: 'symbol',
+      source: 'cities',
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-size': 11,
+        'text-offset': [0, 1.2],
+        'text-anchor': 'top'
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': '#06111e',
+        'text-halo-width': 1.5
+      }
+    });
+
+    /* Utrecht: rode vertrekhub */
+    map.addSource('utrecht-hub', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: utrecht
+        },
+        properties: {}
+      }
+    });
+
+    map.addLayer({
+      id: 'utrecht-glow',
+      type: 'circle',
+      source: 'utrecht-hub',
+      paint: {
+        'circle-radius': 23,
+        'circle-color': '#ff0000',
+        'circle-opacity': 0.35,
+        'circle-blur': 0.5
+      }
+    });
+
+    map.addLayer({
+      id: 'utrecht-point',
+      type: 'circle',
+      source: 'utrecht-hub',
+      paint: {
+        'circle-radius': 10,
+        'circle-color': '#ff0000',
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2.5
+      }
+    });
+
+    map.addLayer({
+      id: 'utrecht-label',
+      type: 'symbol',
+      source: 'utrecht-hub',
+      layout: {
+        'text-field': 'UTRECHT',
+        'text-size': 12,
+        'text-offset': [0, 2.2],
+        'text-anchor': 'top',
+        'text-font': ['Open Sans Bold']
+      },
+      paint: {
+        'text-color': '#ff5555',
+        'text-halo-color': '#06111e',
+        'text-halo-width': 2
+      }
+    });
+
+    /* Blauwe neonroute */
+    map.addSource('route', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: []
+        },
+        properties: {}
+      }
+    });
+
+    map.addLayer({
+      id: 'route-glow',
+      type: 'line',
+      source: 'route',
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round'
+      },
+      paint: {
+        'line-color': '#008cff',
+        'line-width': 9,
+        'line-opacity': 0.25,
+        'line-blur': 3
+      }
+    });
+
+    map.addLayer({
+      id: 'route-line',
+      type: 'line',
+      source: 'route',
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round'
+      },
+      paint: {
+        'line-color': '#00bfff',
+        'line-width': 2.5,
+        'line-opacity': 0.95
+      }
+    });
+
+    /* Bewegend bolletje */
+    const markerElement = document.createElement('div');
+    markerElement.className = 'jbj-marker';
+
+    markerElement.innerHTML = `
+      <div class="flag">
+        <div class="flag-white"></div>
+        <div class="flag-green"></div>
+        <div class="flag-red"></div>
+      </div>
+      <div class="jbj-text">JBJ</div>
+    `;
+
+    const movingMarker = new maplibregl.Marker({
+      element: markerElement,
+      anchor: 'center'
+    })
+      .setLngLat(utrecht)
+      .addTo(map);
+
+    /* Afstand tussen GPS-punten */
+    function distance(a, b) {
+      const R = 6371000;
+      const rad = Math.PI / 180;
+      const lat1 = a[1] * rad;
+      const lat2 = b[1] * rad;
+      const dLat = (b[1] - a[1]) * rad;
+      const dLon = (b[0] - a[0]) * rad;
+
+      const h =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1) * Math.cos(lat2) *
+        Math.sin(dLon / 2) ** 2;
+
+      return 2 * R * Math.asin(Math.sqrt(h));
+    }
+
+    /* Autoroute ophalen */
+    async function getRoadRoute(start, end) {
+      const url =
+        'https://router.project-osrm.org/route/v1/driving/' +
+        start.join(',') + ';' + end.join(',') +
+        '?overview=full&geometries=geojson';
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error('Route niet beschikbaar');
+      }
+
+      const data = await response.json();
+
+      if (!data.routes || !data.routes.length) {
+        throw new Error('Geen route gevonden');
+      }
+
+      return data.routes[0].geometry.coordinates;
+    }
+
+    /* Animatie over de weg */
+    function animateRoute(coordinates, duration) {
+      return new Promise(resolve => {
+        const distances = [0];
+        let totalDistance = 0;
+
+        for (let i = 1; i < coordinates.length; i++) {
+          totalDistance += distance(
+            coordinates[i - 1],
+            coordinates[i]
+          );
+          distances.push(totalDistance);
+        }
+
+        if (totalDistance === 0) {
+          resolve();
+          return;
+        }
+
+        const startTime = performance.now();
+
+        function frame(now) {
+          const progress = Math.min(
+            (now - startTime) / duration,
+            1
+          );
+
+          const targetDistance = progress * totalDistance;
+          let index = 1;
+
+          while (
+            index < distances.length - 1 &&
+            distances[index] < targetDistance
+          ) {
+            index++;
+          }
+
+          const segmentStart = distances[index - 1];
+          const segmentEnd = distances[index];
+          const segmentLength = segmentEnd - segmentStart;
+
+          const part = segmentLength === 0
+            ? 0
+            : (targetDistance - segmentStart) / segmentLength;
+
+          const a = coordinates[index - 1];
+          const b = coordinates[index];
+
+          const position = [
+            a[0] + (b[0] - a[0]) * part,
+            a[1] + (b[1] - a[1]) * part
+          ];
+
+          movingMarker.setLngLat(position);
+
+          if (progress < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            resolve();
+          }
+        }
+
+        requestAnimationFrame(frame);
+      });
+    }
+
+    /* Route tonen en rijden */
+    async function travel(start, end) {
+      const coordinates = await getRoadRoute(start, end);
+
+      map.getSource('route').setData({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: coordinates
+        },
+        properties: {}
+      });
+
+      movingMarker.setLngLat(start);
+      await animateRoute(coordinates, 12000);
+    }
+
+    /* Willekeurige Europese stad en terugkeer */
+    async function startJourney() {
+      while (true) {
+        const destination =
+          cities[Math.floor(Math.random() * cities.length)];
+
+        try {
+          await travel(utrecht, destination.coordinates);
+          await travel(destination.coordinates, utrecht);
+
+          await new Promise(resolve =>
+            setTimeout(resolve, 1500)
+          );
+
+        } catch (error) {
+          console.log('Route opnieuw proberen:', error);
+
+          await new Promise(resolve =>
+            setTimeout(resolve, 5000)
+          );
+        }
+      }
+    }
+
+    startJourney();
+  });
+</script>
+</body>
+</html>
